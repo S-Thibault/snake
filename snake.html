@@ -6,201 +6,224 @@
 
 <body>
   <canvas id="canvas" width="400" height="400"></canvas>
-  <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
+   <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
+   <script>
+   // Mettre en place du canvas
+   var canvas = document.getElementById("canvas");
+   var ctx = canvas.getContext("2d");
 
-    <script>
+   // Récupérer la largeur et la hauteur de l'élément canvas
+   var largeur = canvas.width;
+   var hauteur = canvas.height;
 
-    var canvas = document.getElementById("canvas");
-      var ctx = canvas.getContext("2d");
+   // Calculer la largeur et la hauteur en blocs
+   var tailleBloc = 10;
+   var largeurEnBlocs = largeur / tailleBloc;
+   var hauteurEnBlocs = hauteur / tailleBloc;
 
-      var largeur = canvas.width;
-      var hauteur = canvas.height;
+   // Initialiser le score à 0
+   var score = 0;
 
-      var tailleBloc = 10;
-      var hauteurEnBlocs = hauteur / tailleBloc;
-      var hauteurEnBlocs = hauteur / tailleBloc;
+   // Dessiner les murs du plateau de jeu
+   var dessinerMurs = function () {
+       ctx.fillStyle = "Gray";
+       ctx.fillRect(0, 0, largeur, tailleBloc);
+       ctx.fillRect(0, hauteur - tailleBloc, largeur, tailleBloc);
+       ctx.fillRect(0, 0, tailleBloc, hauteur);
+       ctx.fillRect(largeur - tailleBloc, 0, tailleBloc, hauteur)
+   };
 
-      var score = 0
+   // Afficher le score dans le coin haut-gauche
+   var afficherScore = function () {
+       ctx.font = "20px Courier";
+       ctx.fillStyle = "Black";
+       ctx.textAlign = "left";
+       ctx.textBaseline = "top";
+       ctx.fillText("Score : " + score, tailleBloc, tailleBloc);
+   };
 
-      var dessinerMurs = function(){
-        ctx.fillStyle = "Grey";
-        ctx.fillRect(0, 0, largeur, tailleBloc);
-        ctx.fillRect(0, hauteur - tailleBloc, largeur, - tailleBloc);
-        ctx.fillRect(0, 0, tailleBloc, hauteur);
-        ctx.fillRect(largeur - tailleBloc, 0, tailleBloc, hauteur)
-      };
+   // Annuler l'animation et afficher le message Game Over
+   var gameOver = function () {
+       clearInterval(idIntervalle);
+       ctx.font = "60px Courier";
+       ctx.fillStyle = "Black";
+       ctx.textAlign = "center";
+       ctx.textBaseline = "middle";
+       ctx.fillText("Game Over", largeur / 2, hauteur / 2);
+   };
 
-    var afficherScore = function () {
-          ctx.font = "20px Courier";
-          ctx.fillStyle = "Black";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "top";
-          ctx.fillText("Score : " + score, tailleBloc, tailleBloc);
-      };
+   // Dessiner un cercle (avec la fonction du chapitre 14)
+   var cercle = function (x, y, rayon, cerclePlein) {
+       ctx.beginPath();
+       ctx.arc(x, y, rayon, 0, Math.PI * 2, false);
+       if (cerclePlein) {
+           ctx.fill();
+       } else {
+           ctx.stroke();
+       }
+   };
 
-    var gameOver = function () {
-        clearInterval(idIntervalle);
-        ctx.font = "60px Courier";
-        ctx.fillStyle = "Black";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("Game Over", largeur / 2, hauteur / 2);
-    };
+   // Le constructeur de Bloc
+   var Bloc = function (colonne, ligne) {
+       this.colonne = colonne;
+       this.ligne = ligne;
+   };
 
-    var cercle = function (x, y, rayon, cerclePlein) {
-            ctx.beginPath();
-            ctx.arc(x, y, rayon, 0, Math.PI * 2, false);
-            if (cerclePlein) {
-                ctx.fill();
-            } else {
-                ctx.stroke();
-            }
-      };
+   // Dessiner un carré à la position du bloc
+   Bloc.prototype.dessinerCarre = function (couleur) {
+       var x = this.colonne * tailleBloc;
+       var y = this.ligne * tailleBloc;
+       ctx.fillStyle = couleur;
+       ctx.fillRect(x, y, tailleBloc, tailleBloc);
+   };
 
-    var Bloc = function (colonne, ligne) {
-          this.colonne = colonne;
-          this.ligne = ligne;
-      };
+   // Dessiner un cercle à la position du bloc
+   Bloc.prototype.dessinerCercle = function (couleur) {
+       var centreX = this.colonne * tailleBloc + tailleBloc / 2;
+       var centreY = this.ligne * tailleBloc + tailleBloc / 2;
+       ctx.fillStyle = couleur;
+       cercle(centreX, centreY, tailleBloc / 2, true);
+   };
 
-      Bloc.prototype.dessinerCarre = function (couleur) {
-              var x = this.colonne * tailleBloc;
-              var y = this.ligne * tailleBloc;
-              ctx.fillStyle = couleur;
-              ctx.fillRect(x, y, tailleBloc, tailleBloc);
-       };
+   // Vérifier si deux blocs se trouvent à la même position
+   Bloc.prototype.egal = function (autreBloc) {
+       return this.colonne === autreBloc.colonne && this.ligne === autreBloc.ligne;
+   };
 
-       Bloc.prototype.dessinerCercle = function (couleur) {
-            var centreX = this.colonne * tailleBloc + tailleBloc / 2;
-            var centreY = this.ligne * tailleBloc + tailleBloc / 2;
-            ctx.fillStyle = couleur;
-            cercle(centreX, centreY, tailleBloc / 2, true);
-        };
+   // Le constructeur de Serpent
+   var Serpent = function () {
+       this.segments = [
+           new Bloc(7, 5),
+           new Bloc(6, 5),
+           new Bloc(5, 5)
+       ];
 
+       this.direction = "droite";
+       this.directionSuivante = "droite";
+   };
 
-       Bloc.prototype.egal = function (autreBloc) {
-         return this.colonne === autreBloc.colonne && this.ligne === autreBloc.ligne;
-     };
+   // Dessiner un carré pour chaque segment du corps du serpent
+   Serpent.prototype.dessiner = function () {
+       for (var i = 0; i < this.segments.length; i++) {
+           this.segments[i].dessinerCarre("Blue");
+       }
+   };
 
-     var Serpent = function () {
-        this.segments = [
-            new Bloc(7, 5),
-            new Bloc(6, 5),
-            new Bloc(5, 5)
-        ];
-        this.direction = "droite";
-        this.directionSuivante = "droite";
-    };
+   // Créer une nouvelle tête et l'ajouter au début du serpent
+   // afin de faire avancer le serpent dans le sens de sa direction
+   Serpent.prototype.deplacer = function () {
+       var tete = this.segments[0];
+       var nouvelleTete;
 
-    Serpent.prototype.dessiner = function () {
-            for (var i = 0; i < this.segments.length; i++) {
-                this.segments[i].dessinerCarre("Blue");
-            }
-        };
+       this.direction = this.directionSuivante;
 
-        Serpent.prototype.deplacer = function () {
-        var tete = this.segments[0];
-        var nouvelleTete;
+       if (this.direction === "droite") {
+           nouvelleTete = new Bloc(tete.colonne + 1, tete.ligne);
+       } else if (this.direction === "bas") {
+           nouvelleTete = new Bloc(tete.colonne, tete.ligne + 1);
+       } else if (this.direction === "gauche") {
+           nouvelleTete = new Bloc(tete.colonne - 1, tete.ligne);
+       } else if (this.direction === "haut") {
+           nouvelleTete = new Bloc(tete.colonne, tete.ligne - 1);
+       }
 
-        this.direction = this.directionSuivante;
+       if (this.verifierCollision(nouvelleTete)) {
+           gameOver();
+           return;
+       }
 
-        if (this.direction === "droite") {
-            nouvelleTete = new Bloc(tete.colonne + 1, tete.ligne);
-        } else if (this.direction === "bas") {
-            nouvelleTete = new Bloc(tete.colonne, tete.ligne + 1);
-        } else if (this.direction === "gauche") {
-            nouvelleTete = new Bloc(tete.colonne - 1, tete.ligne);
-        } else if (this.direction === "haut") {
-            nouvelleTete = new Bloc(tete.colonne, tete.ligne - 1);
-        }
+       this.segments.unshift(nouvelleTete);
 
-        if (this.verifierCollision(nouvelleTete)) {
-            gameOver();
-            return;
-        }
+       if (nouvelleTete.egal(pomme.position)) {
+           score++;
+           pomme.deplacer();
+       } else {
+           this.segments.pop();
+       }
+   };
 
-        this.segments.unshift(nouvelleTete);
+   // Vérifier si la nouvelle tête du serpent est entrée
+   // en collision avec le mur ou avec son propre corps
+   Serpent.prototype.verifierCollision = function (tete) {
+       var collisionGauche = (tete.colonne === 0);
+       var collisionHaut = (tete.ligne === 0);
+       var collisionDroite = (tete.colonne === largeurEnBlocs - 1);
+       var collisionBas = (tete.ligne === hauteurEnBlocs - 1);
 
-        if (nouvelleTete.egal(pomme.position)) {
-            score++;
-            pomme.deplacer();
-        } else {
-            this.segments.pop();
-        }
-    };
+       var collisionMur = collisionGauche || collisionHaut || collisionDroite || collisionBas;
 
-    Serpent.prototype.verifierCollision = function (tete) {
-        var collisionGauche = (tete.colonne === 0);
-        var collisionHaut = (tete.ligne === 0);
-        var collisionDroite = (tete.colonne === largeurEnBlocs - 1);
-        var collisionBas = (tete.ligne === hauteurEnBlocs - 1);
+       var collisionCorps = false;
 
-        var collisionMur = collisionGauche || collisionHaut || collisionDroite || collisionBas;
-
-        var collisionCorps = false;
-
-        for (var i = 0; i < this.segments.length; i++) {
-            if (tete.egal(this.segments[i])) {
-                collisionCorps = true;
-            }
-        }
-
-        return collisionMur || collisionCorps;
-    };
-
-    Serpent.prototype.definirDirection = function (nouvelleDirection) {
-           if (this.direction === "haut" && nouvelleDirection === "bas") {
-               return;
-           } else if (this.direction === "droite" && nouvelleDirection === "gauche") {
-               return;
-           } else if (this.direction === "bas" && nouvelleDirection === "haut") {
-               return;
-           } else if (this.direction === "gauche" && nouvelleDirection === "droite") {
-               return;
+       for (var i = 0; i < this.segments.length; i++) {
+           if (tete.egal(this.segments[i])) {
+               collisionCorps = true;
            }
+       }
 
-           this.directionSuivante = nouvelleDirection;
-       };
+       return collisionMur || collisionCorps;
+   };
 
-       var Pomme = function () {
-               this.position = new Bloc(10, 10);
-           };
+   // Définir la nouvelle direction du serpent avec le clavier
+   Serpent.prototype.definirDirection = function (nouvelleDirection) {
+       if (this.direction === "haut" && nouvelleDirection === "bas") {
+           return;
+       } else if (this.direction === "droite" && nouvelleDirection === "gauche") {
+           return;
+       } else if (this.direction === "bas" && nouvelleDirection === "haut") {
+           return;
+       } else if (this.direction === "gauche" && nouvelleDirection === "droite") {
+           return;
+       }
 
-           Pomme.prototype.dessiner = function () {
-        this.position.dessinerCercle("LimeGreen");
-    };
+       this.directionSuivante = nouvelleDirection;
+   };
 
-    Pomme.prototype.deplacer = function () {
-            var colonneAleatoire = Math.floor(Math.random() * (largeurEnBlocs - 2)) + 1;
-            var ligneAleatoire = Math.floor(Math.random() * (hauteurEnBlocs - 2)) + 1;
-            this.position = new Bloc(colonneAleatoire, ligneAleatoire);
-        };
+   // Le constructeur de Pomme
+   var Pomme = function () {
+       this.position = new Bloc(10, 10);
+   };
 
-        var serpent = new Serpent();
-        var pomme = new Pomme();
+   // Dessiner un cercle à la position de la pomme
+   Pomme.prototype.dessiner = function () {
+       this.position.dessinerCercle("LimeGreen");
+   };
 
-        var idIntervalle = setInterval(function () {
-            ctx.clearRect(0, 0, largeur, hauteur);
-            afficherScore();
-            serpent.deplacer();
-            serpent.dessiner();
-            pomme.dessiner();
-            dessinerMurs();
-        }, 100);
+   // Déplacer la pomme vers une nouvelle position aléatoire
+   Pomme.prototype.deplacer = function () {
+       var colonneAleatoire = Math.floor(Math.random() * (largeurEnBlocs - 2)) + 1;
+       var ligneAleatoire = Math.floor(Math.random() * (hauteurEnBlocs - 2)) + 1;
+       this.position = new Bloc(colonneAleatoire, ligneAleatoire);
+   };
 
-        var directions = {
-               37: "gauche",
-               38: "haut",
-               39: "droite",
-               40: "bas"
-           };
+   // Créer les objets serpent et pomme
+   var serpent = new Serpent();
+   var pomme = new Pomme();
 
-           $("body").keydown(function (evenement) {
-                   var nouvelleDirection = directions[evenement.keyCode];
-                   if (nouvelleDirection !== undefined) {
-                       serpent.definirDirection(nouvelleDirection);
-                   }
-               });
-               
-    </script>
+   // Passer une fonction d'animation à setInterval
+   var idIntervalle = setInterval(function () {
+       ctx.clearRect(0, 0, largeur, hauteur);
+       afficherScore();
+       serpent.deplacer();
+       serpent.dessiner();
+       pomme.dessiner();
+       dessinerMurs();
+   }, 100);
+
+   // Convertir les codes des touches des flèches en directions
+   var directions = {
+       37: "gauche",
+       38: "haut",
+       39: "droite",
+       40: "bas"
+   };
+
+   // Le gestionnaire d'événements keydown qui gère les touches de direction
+   $("body").keydown(function (evenement) {
+       var nouvelleDirection = directions[evenement.keyCode];
+       if (nouvelleDirection !== undefined) {
+           serpent.definirDirection(nouvelleDirection);
+       }
+   });
+   </script>
 </body>
 </html>
