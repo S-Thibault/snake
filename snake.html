@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>snake</title>
+</head>
+
+<body>
+  <canvas id="canvas" width="400" height="400"></canvas>
+  <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
+
+    <script>
+
+    var canvas = document.getElementById("canvas");
+      var ctx = canvas.getContext("2d");
+
+      var largeur = canvas.width;
+      var hauteur = canvas.height;
+
+      var tailleBloc = 10;
+      var hauteurEnBlocs = hauteur / tailleBloc;
+      var hauteurEnBlocs = hauteur / tailleBloc;
+
+      var score = 0
+
+      var dessinerMurs = function(){
+        ctx.fillStyle = "Grey";
+        ctx.fillRect(0, 0, largeur, tailleBloc);
+        ctx.fillRect(0, hauteur - tailleBloc, largeur, - tailleBloc);
+        ctx.fillRect(0, 0, tailleBloc, hauteur);
+        ctx.fillRect(largeur - tailleBloc, 0, tailleBloc, hauteur)
+      };
+
+    var afficherScore = function () {
+          ctx.font = "20px Courier";
+          ctx.fillStyle = "Black";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillText("Score : " + score, tailleBloc, tailleBloc);
+      };
+
+    var gameOver = function () {
+        clearInterval(idIntervalle);
+        ctx.font = "60px Courier";
+        ctx.fillStyle = "Black";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Game Over", largeur / 2, hauteur / 2);
+    };
+
+    var cercle = function (x, y, rayon, cerclePlein) {
+            ctx.beginPath();
+            ctx.arc(x, y, rayon, 0, Math.PI * 2, false);
+            if (cerclePlein) {
+                ctx.fill();
+            } else {
+                ctx.stroke();
+            }
+      };
+
+    var Bloc = function (colonne, ligne) {
+          this.colonne = colonne;
+          this.ligne = ligne;
+      };
+
+      Bloc.prototype.dessinerCarre = function (couleur) {
+              var x = this.colonne * tailleBloc;
+              var y = this.ligne * tailleBloc;
+              ctx.fillStyle = couleur;
+              ctx.fillRect(x, y, tailleBloc, tailleBloc);
+       };
+
+       Bloc.prototype.dessinerCercle = function (couleur) {
+            var centreX = this.colonne * tailleBloc + tailleBloc / 2;
+            var centreY = this.ligne * tailleBloc + tailleBloc / 2;
+            ctx.fillStyle = couleur;
+            cercle(centreX, centreY, tailleBloc / 2, true);
+        };
+
+
+       Bloc.prototype.egal = function (autreBloc) {
+         return this.colonne === autreBloc.colonne && this.ligne === autreBloc.ligne;
+     };
+
+     var Serpent = function () {
+        this.segments = [
+            new Bloc(7, 5),
+            new Bloc(6, 5),
+            new Bloc(5, 5)
+        ];
+        this.direction = "droite";
+        this.directionSuivante = "droite";
+    };
+
+    Serpent.prototype.dessiner = function () {
+            for (var i = 0; i < this.segments.length; i++) {
+                this.segments[i].dessinerCarre("Blue");
+            }
+        };
+
+        Serpent.prototype.deplacer = function () {
+        var tete = this.segments[0];
+        var nouvelleTete;
+
+        this.direction = this.directionSuivante;
+
+        if (this.direction === "droite") {
+            nouvelleTete = new Bloc(tete.colonne + 1, tete.ligne);
+        } else if (this.direction === "bas") {
+            nouvelleTete = new Bloc(tete.colonne, tete.ligne + 1);
+        } else if (this.direction === "gauche") {
+            nouvelleTete = new Bloc(tete.colonne - 1, tete.ligne);
+        } else if (this.direction === "haut") {
+            nouvelleTete = new Bloc(tete.colonne, tete.ligne - 1);
+        }
+
+        if (this.verifierCollision(nouvelleTete)) {
+            gameOver();
+            return;
+        }
+
+        this.segments.unshift(nouvelleTete);
+
+        if (nouvelleTete.egal(pomme.position)) {
+            score++;
+            pomme.deplacer();
+        } else {
+            this.segments.pop();
+        }
+    };
+
+    Serpent.prototype.verifierCollision = function (tete) {
+        var collisionGauche = (tete.colonne === 0);
+        var collisionHaut = (tete.ligne === 0);
+        var collisionDroite = (tete.colonne === largeurEnBlocs - 1);
+        var collisionBas = (tete.ligne === hauteurEnBlocs - 1);
+
+        var collisionMur = collisionGauche || collisionHaut || collisionDroite || collisionBas;
+
+        var collisionCorps = false;
+
+        for (var i = 0; i < this.segments.length; i++) {
+            if (tete.egal(this.segments[i])) {
+                collisionCorps = true;
+            }
+        }
+
+        return collisionMur || collisionCorps;
+    };
+
+    Serpent.prototype.definirDirection = function (nouvelleDirection) {
+           if (this.direction === "haut" && nouvelleDirection === "bas") {
+               return;
+           } else if (this.direction === "droite" && nouvelleDirection === "gauche") {
+               return;
+           } else if (this.direction === "bas" && nouvelleDirection === "haut") {
+               return;
+           } else if (this.direction === "gauche" && nouvelleDirection === "droite") {
+               return;
+           }
+
+           this.directionSuivante = nouvelleDirection;
+       };
+
+       var Pomme = function () {
+               this.position = new Bloc(10, 10);
+           };
+
+           Pomme.prototype.dessiner = function () {
+        this.position.dessinerCercle("LimeGreen");
+    };
+
+    Pomme.prototype.deplacer = function () {
+            var colonneAleatoire = Math.floor(Math.random() * (largeurEnBlocs - 2)) + 1;
+            var ligneAleatoire = Math.floor(Math.random() * (hauteurEnBlocs - 2)) + 1;
+            this.position = new Bloc(colonneAleatoire, ligneAleatoire);
+        };
+
+        var serpent = new Serpent();
+        var pomme = new Pomme();
+
+        var idIntervalle = setInterval(function () {
+            ctx.clearRect(0, 0, largeur, hauteur);
+            afficherScore();
+            serpent.deplacer();
+            serpent.dessiner();
+            pomme.dessiner();
+            dessinerMurs();
+        }, 100);
+
+        var directions = {
+               37: "gauche",
+               38: "haut",
+               39: "droite",
+               40: "bas"
+           };
+
+           $("body").keydown(function (evenement) {
+                   var nouvelleDirection = directions[evenement.keyCode];
+                   if (nouvelleDirection !== undefined) {
+                       serpent.definirDirection(nouvelleDirection);
+                   }
+               });
+               
+    </script>
+</body>
+</html>
